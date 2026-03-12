@@ -1,0 +1,21 @@
+appId: com.archstore.installer
+productName: ArchStore Installer
+asar: true
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: System
+  icon: assets/icon.png
+  synopsis: ArchStore - Arch Linux App Store Installer
+  description: Installer for ArchStore, the Arch Linux App Store with community reviews
+
+extraResources:
+  - from: "../build/bin/archstore"
+    to: "archstore-bin"
+
+directories:
+  output: dist
+  buildResources: assets

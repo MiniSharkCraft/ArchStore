@@ -1,0 +1,15 @@
+{
+  "name": "archstore-installer",
+  "version": "1.0.0",
+  "description": "ArchStore Installer",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --linux AppImage",
+    "build:dir": "electron-builder --linux dir"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

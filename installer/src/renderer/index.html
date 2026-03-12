@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <title>ArchStore Installer</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0a0a14;
+      --cyan:       #00f5ff;
+      --cyan-dim:   #00b8c4;
+      --cyan-glow:  rgba(0, 245, 255, 0.15);
+      --purple:     #7c3aed;
+      --purple-dim: #5b21b6;
+      --purple-glow:rgba(124, 58, 237, 0.2);
+      --glass-bg:   rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(0, 245, 255, 0.18);
+      --text:       #e2e8f0;
+      --text-dim:   #94a3b8;
+      --success:    #22c55e;
+      --warning:    #f59e0b;
+      --error:      #ef4444;
+      --radius:     12px;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* ── Animated background grid ─────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridScroll 20s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes gridScroll {
+      0%   { background-position: 0 0; }
+      100% { background-position: 40px 40px; }
+    }
+
+    /* Ambient glows */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 30%, rgba(0,245,255,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 70%, rgba(124,58,237,0.10) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────────── */
+    .app-wrapper {
+      position: relative; z-index: 1;
+      width: 720px; height: 520px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Title bar (draggable) ────────────────────────────────────────── */
+    .titlebar {
+      -webkit-app-region: drag;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      background: rgba(0,0,0,0.3);
+      border-bottom: 1px solid rgba(0,245,255,0.08);
+      flex-shrink: 0;
+    }
+    .titlebar-title {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .titlebar-close {
+      -webkit-app-region: no-drag;
+      margin-left: auto;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--error);
+      border: none;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+    .titlebar-close:hover { opacity: 1; }
+
+    /* ── Main content ─────────────────────────────────────────────────── */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 48px;
+      overflow: hidden;
+    }
+
+    /* ── Screens ──────────────────────────────────────────────────────── */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      animation: fadeIn 0.3s ease;
+    }
+    .screen.active { display: flex; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Hexagon logo ─────────────────────────────────────────────────── */
+    .hex-logo {
+      width: 84px; height: 84px;
+      position: relative;
+      margin-bottom: 24px;
+    }
+    .hex-logo svg { width: 100%; height: 100%; }
+    .hex-pulse {
+      position: absolute; inset: -8px;
+      background: transparent;
+      border-radius: 50%;
+      animation: hexPulse 2.4s ease-in-out infinite;
+    }
+    @keyframes hexPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,245,255,0.4); }
+      50%       { box-shadow: 0 0 0 16px rgba(0,245,255,0); }
+    }
+
+    /* ── Typography ───────────────────────────────────────────────────── */
+    .app-name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+    .app-subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .version-badge {
+      font-size: 10px;
+      color: var(--cyan-dim);
+      letter-spacing: 0.1em;
+      background: var(--cyan-glow);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 20px;
+      padding: 2px 10px;
+      margin-bottom: 20px;
+    }
+    .welcome-text {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    /* ── Glass card ───────────────────────────────────────────────────── */
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      width: 100%;
+      backdrop-filter: blur(12px);
+      margin-bottom: 20px;
+    }
+
+    /* ── Buttons ──────────────────────────────────────────────────────── */
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      width: 100%;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0.06);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn:hover::after { opacity: 1; }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan) 0%, #00c4f0 100%);
+      color: #0a0a14;
+      box-shadow: 0 0 20px rgba(0,245,255,0.3);
+    }
+    .btn-primary:hover { box-shadow: 0 0 32px rgba(0,245,255,0.5); }
+    .btn-primary:disabled {
+      opacity: 0.4; cursor: not-allowed;
+      box-shadow: none;
+    }
+    .btn-ghost {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-dim);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(34,197,94,0.3);
+    }
+    .btn-success:hover { box-shadow: 0 0 32px rgba(34,197,94,0.5); }
+
+    /* ── Section heading ──────────────────────────────────────────────── */
+    .screen-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    /* ── System check items ───────────────────────────────────────────── */
+    .check-list {
+      list-style: none;
+      width: 100%;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.3s;
+      opacity: 0;
+      transform: translateX(-8px);
+    }
+    .check-item.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .check-icon {
+      font-size: 16px;
+      width: 22px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .check-label { flex: 1; color: var(--text-dim); font-size: 13px; }
+    .check-status {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .status-ok    { color: var(--success); background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); }
+    .status-warn  { color: var(--warning); background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); }
+    .status-err   { color: var(--error);   background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.3); }
+
+    /* Spinner */
+    .spinner-wrap { margin-bottom: 16px; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(0,245,255,0.15);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-label {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      letter-spacing: 0.08em;
+    }
+
+    /* ── Form inputs ──────────────────────────────────────────────────── */
+    .form-group {
+      margin-bottom: 14px;
+      width: 100%;
+    }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(0,245,255,0.08);
+    }
+    .form-input::placeholder { color: rgba(148,163,184,0.5); }
+    .form-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 6px;
+      opacity: 0.7;
+    }
+
+    /* ── Progress bar ─────────────────────────────────────────────────── */
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      border-radius: 3px;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 0 8px rgba(0,245,255,0.4);
+      position: relative;
+    }
+    .progress-fill::after {
+      content: '';
+      position: absolute; top: 0; right: 0;
+      width: 40px; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0%   { opacity: 0; }
+      50%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ── Log terminal ─────────────────────────────────────────────────── */
+    .log-terminal {
+      width: 100%;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(0,245,255,0.12);
+      border-radius: 8px;
+      padding: 14px 16px;
+      height: 160px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .log-terminal::-webkit-scrollbar { width: 4px; }
+    .log-terminal::-webkit-scrollbar-track { background: transparent; }
+    .log-terminal::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.3); border-radius: 2px; }
+    .log-line {
+      opacity: 0;
+      transform: translateY(4px);
+      animation: logIn 0.25s forwards;
+    }
+    @keyframes logIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .log-prompt { color: var(--cyan); margin-right: 6px; }
+    .log-ok     { color: var(--success); }
+    .log-err    { color: var(--error); }
+
+    /* ── Success screen ───────────────────────────────────────────────── */
+    .big-check {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: rgba(34,197,94,0.12);
+      border: 2px solid rgba(34,197,94,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+      margin-bottom: 16px;
+      box-shadow: 0 0 32px rgba(34,197,94,0.2);
+      animation: checkPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes checkPop {
+      0%   { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .success-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 8px;
+    }
+    .success-path {
+      font-size: 11px;
+      color: var(--text-dim);
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 8px 14px;
+      margin-bottom: 28px;
+      font-family: inherit;
+      text-align: center;
+    }
+    .success-path span { color: var(--cyan); }
+
+    /* ── Error notice ─────────────────────────────────────────────────── */
+    .error-notice {
+      display: none;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--error);
+      text-align: center;
+      margin-top: 12px;
+      width: 100%;
+    }
+
+    /* ── Divider ──────────────────────────────────────────────────────── */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,245,255,0.2), transparent);
+      margin: 4px 0 16px;
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <span class="titlebar-title">⬡ ArchStore Installer</span>
+    <button class="titlebar-close" id="btnTitleClose" title="Đóng"></button>
+  </div>
+
+  <!-- Content area -->
+  <div class="content">
+
+    <!-- ══ Screen 1: Welcome ══════════════════════════════════════════ -->
+    <div class="screen active" id="screen-1">
+      <div class="hex-logo">
+        <div class="hex-pulse"></div>
+        <svg viewBox="0 0 84 84" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="hexGrad" x1="0" y1="0" x2="84" y2="84" gradientUnits="userSpaceOnUse">
+              <stop offset="0%"   stop-color="#00f5ff"/>
+              <stop offset="100%" stop-color="#7c3aed"/>
+            </linearGradient>
+          </defs>
+          <!-- Hexagon -->
+          <polygon
+            points="42,4 78,23 78,61 42,80 6,61 6,23"
+            fill="rgba(0,245,255,0.06)"
+            stroke="url(#hexGrad)"
+            stroke-width="1.5"
+          />
+          <!-- Inner hex -->
+          <polygon
+            points="42,14 70,29 70,59 42,74 14,59 14,29"
+            fill="none"
+            stroke="rgba(0,245,255,0.15)"
+            stroke-width="1"
+          />
+          <!-- Arch "A" symbol -->
+          <text x="42" y="54" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="url(#hexGrad)">A</text>
+        </svg>
+      </div>
+
+      <div class="app-name">ArchStore</div>
+      <div class="app-subtitle">Arch Linux App Store</div>
+      <div class="version-badge">v1.0.0</div>
+      <div class="welcome-text">Chào mừng đến với trình cài đặt ArchStore.<br>Nhấn bắt đầu để tiến hành cài đặt.</div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnStart">Bắt đầu cài đặt →</button>
+        <button class="btn btn-ghost" id="btnQuit1">Thoát</button>
+      </div>
+    </div>
+
+    <!-- ══ Screen 2: System check ══════════════════════════════════════ -->
+    <div class="screen" id="screen-2">
+      <div class="screen-title">Kiểm tra hệ thống</div>
+      <div class="divider"></div>
+
+      <div class="spinner-wrap" id="checkSpinner">
+        <div class="spinner"></div>
+        <div class="spinner-label">Đang kiểm tra hệ thống...</div>
+      </div>
+
+      <ul class="check-list glass-card" id="checkList" style="margin-bottom:16px; display:none;">
+        <li class="check-item" id="chk-arch">
+          <span class="check-icon" id="chk-arch-icon">◌</span>
+          <span class="check-label">Arch Linux</span>
+          <span class="check-status" id="chk-arch-status"></span>
+        </li>
+        <li class="check-item" id="chk-pacman">
+          <span class="check-icon" id="chk-pacman-icon">◌</span>
+          <span class="check-label">pacman (package manager)</span>
+          <span class="check-status" id="chk-pacman-status"></span>
+        </li>
+        <li class="check-item" id="chk-aur">
+          <span class="check-icon" id="chk-aur-icon">◌</span>
+          <span class="check-label">AUR helper (yay hoặc paru)</span>
+          <span class="check-status" id="chk-aur-status"></span>
+        </li>
+      </ul>
+
+      <div class="error-notice" id="archError">
+        ✗ Hệ thống không phải Arch Linux. ArchStore chỉ hoạt động trên Arch Linux.
+      </div>
+
+      <div class="btn-row" id="checkBtns" style="display:none;">
+        <button class="btn btn-ghost" id="btnBack2">← Quay lại</button>
+        <button class="btn btn-primary" id="btnNext2" disabled>Tiếp tục →</button>
+      </div>
+    </div>
+
+    <!-- ══ Screen 3: Configuration ════════════════════════════════════ -->
+    <div class="screen" id="screen-3">
+      <div class="screen-title">Cấu hình cài đặt</div>
+      <div class="divider"></div>
+
+      <div class="glass-card" style="margin-bottom: 16px;">
+        <div class="form-group">
+          <label class="form-label" for="installPath">Thư mục cài đặt</label>
+          <input class="form-input" type="text" id="installPath" value="/opt/archstore" spellcheck="false" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="workerUrl">Cloudflare Worker URL <span style="color:var(--text-dim);font-size:10px;">(tùy chọn)</span></label>
+          <input class="form-input" type="text" id="workerUrl" placeholder="https://archstore-api.your-subdomain.workers.dev" spellcheck="false" />
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" for="apiKey">API Key <span style="color:var(--text-dim);font-size:10px;">(tùy chọn)</span></label>
+          <input class="form-input" type="password" id="apiKey" placeholder="••••••••••••••••••••" />
+        </div>
+      </div>
+
+      <div class="form-hint" style="margin-bottom:20px; text-align:center;">
+        ℹ Bỏ trống nếu bạn muốn tự cấu hình sau
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btnBack3">← Quay lại</button>
+        <button class="btn btn-primary" id="btnInstall">Cài đặt →</button>
+      </div>
+    </div>
+
+    <!-- ══ Screen 4: Installing ════════════════════════════════════════ -->
+    <div class="screen" id="screen-4">
+      <div class="screen-title">Đang cài đặt...</div>
+      <div class="divider"></div>
+
+      <div class="progress-track" style="margin-bottom:16px;">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+      <div class="log-terminal" id="logTerminal"></div>
+    </div>
+
+    <!-- ══ Screen 5: Done ══════════════════════════════════════════════ -->
+    <div class="screen" id="screen-5">
+      <div class="big-check">✓</div>
+      <div class="success-title">Cài đặt thành công!</div>
+      <div class="success-path">
+        ArchStore đã được cài đặt tại:<br>
+        <span id="finalPath">/opt/archstore/archstore</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-success" id="btnLaunch">🚀 Khởi động ArchStore</button>
+        <button class="btn btn-ghost" id="btnClose5">Đóng</button>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app-wrapper -->
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let currentScreen = 1
+  let systemInfo = null
+  let installedBinaryPath = '/opt/archstore/archstore'
+
+  // ── Screen navigation ──────────────────────────────────────────────────────
+  function showScreen(n) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+    const el = document.getElementById('screen-' + n)
+    if (el) el.classList.add('active')
+    currentScreen = n
+  }
+
+  // ── Progress helpers ───────────────────────────────────────────────────────
+  const STEPS = 4
+  const stepMessages = {
+    1: 'Đang tạo thư mục...',
+    2: 'Đang sao chép binary...',
+    3: 'Đang tạo shortcut...',
+    4: 'Đang cấu hình môi trường...',
+  }
+
+  function setProgress(step) {
+    const pct = Math.min(100, Math.round((step / STEPS) * 100))
+    document.getElementById('progressFill').style.width = pct + '%'
+  }
+
+  function appendLog(text, type) {
+    const terminal = document.getElementById('logTerminal')
+    const line = document.createElement('div')
+    line.className = 'log-line'
+    const cls = type === 'ok' ? 'log-ok' : type === 'err' ? 'log-err' : ''
+    line.innerHTML = `<span class="log-prompt">&gt;</span> <span class="${cls}">${escHtml(text)}</span>`
+    terminal.appendChild(line)
+    terminal.scrollTop = terminal.scrollHeight
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  }
+
+  // ── System check animation ──────────────────────────────────────────────────
+  function revealCheckItem(id, icon, statusText, statusClass, delay) {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const item = document.getElementById('chk-' + id)
+        const iconEl = document.getElementById('chk-' + id + '-icon')
+        const statusEl = document.getElementById('chk-' + id + '-status')
+        iconEl.textContent = icon
+        statusEl.textContent = statusText
+        statusEl.className = 'check-status ' + statusClass
+        item.classList.add('visible')
+        resolve()
+      }, delay)
+    })
+  }
+
+  // ── Screen 1 → 2: Start ────────────────────────────────────────────────────
+  document.getElementById('btnStart').addEventListener('click', async () => {
+    showScreen(2)
+
+    // Run system check
+    let result = { isArch: false, hasPacman: false, hasYay: false, hasParu: false }
+    try {
+      result = await window.installer.checkSystem()
+    } catch (e) {
+      console.error('checkSystem error', e)
+    }
+    systemInfo = result
+
+    // Hide spinner, show list
+    document.getElementById('checkSpinner').style.display = 'none'
+    const list = document.getElementById('checkList')
+    list.style.display = 'block'
+    document.getElementById('checkBtns').style.display = 'flex'
+
+    // Animate items appearing one by one
+    await revealCheckItem(
+      'arch',
+      result.isArch ? '✓' : '✗',
+      result.isArch ? 'Detected' : 'Not found',
+      result.isArch ? 'status-ok' : 'status-err',
+      0
+    )
+    await revealCheckItem(
+      'pacman',
+      result.hasPacman ? '✓' : '✗',
+      result.hasPacman ? 'Available' : 'Not found',
+      result.hasPacman ? 'status-ok' : 'status-err',
+      80
+    )
+    await revealCheckItem(
+      'aur',
+      (result.hasYay || result.hasParu) ? '✓' : '⚠',
+      result.hasYay ? 'yay found' : result.hasParu ? 'paru found' : 'Not found',
+      (result.hasYay || result.hasParu) ? 'status-ok' : 'status-warn',
+      160
+    )
+
+    // Enable/disable next
+    const nextBtn = document.getElementById('btnNext2')
+    const errDiv  = document.getElementById('archError')
+    if (result.isArch) {
+      nextBtn.disabled = false
+      errDiv.style.display = 'none'
+    } else {
+      nextBtn.disabled = true
+      errDiv.style.display = 'block'
+    }
+  })
+
+  // ── Screen 2: Back / Next ──────────────────────────────────────────────────
+  document.getElementById('btnBack2').addEventListener('click', () => {
+    showScreen(1)
+    // Reset check screen
+    document.getElementById('checkSpinner').style.display = 'block'
+    document.getElementById('checkList').style.display = 'none'
+    document.getElementById('checkBtns').style.display = 'none'
+    document.getElementById('archError').style.display = 'none'
+    document.querySelectorAll('.check-item').forEach(el => el.classList.remove('visible'))
+  })
+  document.getElementById('btnNext2').addEventListener('click', () => {
+    if (!document.getElementById('btnNext2').disabled) showScreen(3)
+  })
+
+  // ── Screen 3: Back / Install ───────────────────────────────────────────────
+  document.getElementById('btnBack3').addEventListener('click', () => showScreen(2))
+
+  document.getElementById('btnInstall').addEventListener('click', async () => {
+    const installPath = document.getElementById('installPath').value.trim() || '/opt/archstore'
+    const workerUrl   = document.getElementById('workerUrl').value.trim()
+    const apiKey      = document.getElementById('apiKey').value.trim()
+
+    showScreen(4)
+
+    // Clear log and reset progress
+    document.getElementById('logTerminal').innerHTML = ''
+    setProgress(0)
+
+    // Set up progress listener
+    window.installer.removeProgressListeners()
+    window.installer.onProgress((_event, data) => {
+      if (data.step > 0) {
+        setProgress(data.step)
+        appendLog(data.message, data.message.includes('✓') ? 'ok' : 'normal')
+      } else {
+        appendLog(data.message, 'err')
+      }
+    })
+
+    appendLog('Bắt đầu cài đặt ArchStore...', 'normal')
+
+    let result = { success: false, error: 'Không thể gọi installer' }
+    try {
+      result = await window.installer.install({ installPath, workerUrl, apiKey })
+    } catch (e) {
+      result = { success: false, error: String(e) }
+    }
+
+    if (result.success) {
+      setProgress(4)
+      installedBinaryPath = result.binaryPath || (installPath.replace(/^~/, '') + '/archstore')
+      document.getElementById('finalPath').textContent = installedBinaryPath
+      setTimeout(() => showScreen(5), 800)
+    } else {
+      appendLog('Cài đặt thất bại: ' + (result.error || 'Lỗi không xác định'), 'err')
+    }
+  })
+
+  // ── Screen 5: Launch / Close ───────────────────────────────────────────────
+  document.getElementById('btnLaunch').addEventListener('click', () => {
+    window.installer.launch(installedBinaryPath)
+  })
+  document.getElementById('btnClose5').addEventListener('click', () => {
+    window.installer.closeApp()
+  })
+
+  // ── Global close buttons ────────────────────────────────────────────────────
+  document.getElementById('btnQuit1').addEventListener('click', () => window.installer.closeApp())
+  document.getElementById('btnTitleClose').addEventListener('click', () => window.installer.closeApp())
+</script>
+</body>
+</html>

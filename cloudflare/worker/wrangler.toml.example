@@ -1,0 +1,43 @@
+name = "archstore-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# ─────────────────────────────────────────────
+# Cloudflare D1 Database Binding
+# Tạo bằng: wrangler d1 create archstore-db
+# Lấy database_id từ output lệnh trên
+# ─────────────────────────────────────────────
+[[d1_databases]]
+binding       = "DB"
+database_name = "archstore-db"
+database_id   = "YOUR_D1_DATABASE_ID_HERE"
+
+# ─────────────────────────────────────────────
+# Environment Variables (không nhạy cảm)
+# ─────────────────────────────────────────────
+[vars]
+ALLOWED_ORIGINS     = "wails://localhost,http://localhost:5173"
+OAUTH_CALLBACK_BASE_URL = "https://YOUR_WORKER_NAME.YOUR_SUBDOMAIN.workers.dev"
+
+# ─────────────────────────────────────────────
+# Secrets — KHÔNG đặt giá trị ở đây!
+# Chạy các lệnh sau để set secret an toàn:
+#
+#   wrangler secret put JWT_SECRET          # chuỗi ngẫu nhiên dài >= 64 ký tự
+#   wrangler secret put ARCHSTORE_API_KEY   # shared key giữa desktop app và worker
+#   wrangler secret put RESEND_API_KEY      # từ resend.com
+#   wrangler secret put DISCORD_CLIENT_ID
+#   wrangler secret put DISCORD_CLIENT_SECRET
+#   wrangler secret put GITHUB_CLIENT_ID
+#   wrangler secret put GITHUB_CLIENT_SECRET
+# ─────────────────────────────────────────────
+
+# ─────────────────────────────────────────────
+# Production environment
+# ─────────────────────────────────────────────
+[env.production]
+name = "archstore-api-prod"
+
+[env.production.vars]
+ALLOWED_ORIGINS     = "wails://localhost"
+OAUTH_CALLBACK_BASE_URL = "https://YOUR_WORKER_NAME.YOUR_SUBDOMAIN.workers.dev"
