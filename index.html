@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ArchStore — The Arch Linux App Store</title>
+<meta name="description" content="Discover, install, and review packages on Arch Linux. Community ratings, AUR support, OAuth, snapshot backups — all in one cyberpunk desktop app." />
+<meta property="og:title" content="ArchStore — The Arch Linux App Store" />
+<meta property="og:description" content="pacman + AUR + Community Reviews in one cyberpunk-themed desktop app." />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#00f5ff" />
+
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cyan:    #00f5ff;
+  --cyan2:   #00c8d4;
+  --purple:  #7c3aed;
+  --purple2: #a855f7;
+  --bg:      #0a0a14;
+  --bg2:     #0f0f1e;
+  --glass:   rgba(255,255,255,0.04);
+  --border:  rgba(0,245,255,0.15);
+  --text:    #dce8ff;
+  --muted:   rgba(220,232,255,0.45);
+  --green:   #22c55e;
+  --orange:  #f97316;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Animated background ─────────────────────────────────────── */
+.bg-wrap {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-grid {
+  position: absolute; inset: -50%;
+  width: 200%; height: 200%;
+  background-image:
+    linear-gradient(rgba(0,245,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: gridScroll 20s linear infinite;
+}
+@keyframes gridScroll {
+  to { transform: translate(48px, 48px); }
+}
+
+.glow {
+  position: absolute; border-radius: 50%;
+  filter: blur(120px); opacity: .35;
+}
+.glow-cyan   { width:600px; height:600px; background:var(--cyan);   top:-200px; right:-100px; animation: floatA 8s ease-in-out infinite alternate; }
+.glow-purple { width:500px; height:500px; background:var(--purple); bottom:-150px; left:-100px; animation: floatB 10s ease-in-out infinite alternate; }
+@keyframes floatA { to { transform: translate(-60px, 80px); } }
+@keyframes floatB { to { transform: translate(60px,-80px); } }
+
+/* ── Layout ──────────────────────────────────────────────────── */
+.content { position: relative; z-index: 1; }
+
+section { padding: 96px 24px; }
+
+.container { max-width: 1100px; margin: 0 auto; }
+
+/* ── Glass card ──────────────────────────────────────────────── */
+.card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Nav ─────────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 0 24px;
+  background: rgba(10,10,20,.75);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.nav-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px;
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 1.1rem; letter-spacing: .02em;
+  text-decoration: none; color: var(--text);
+}
+.nav-logo-hex { font-size: 1.4rem; color: var(--cyan); }
+.nav-logo span.acc { color: var(--cyan); }
+.nav-links { display: flex; align-items: center; gap: 28px; }
+.nav-links a {
+  color: var(--muted); text-decoration: none; font-size: .9rem;
+  transition: color .2s;
+}
+.nav-links a:hover { color: var(--cyan); }
+.btn-gh {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 18px; border-radius: 8px;
+  background: var(--glass); border: 1px solid var(--border);
+  color: var(--text); font-size: .85rem; font-weight: 600;
+  text-decoration: none; transition: all .2s; cursor: pointer;
+}
+.btn-gh:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,245,255,.06); }
+
+/* ── Hero ────────────────────────────────────────────────────── */
+#hero {
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding-top: 80px;
+  text-align: center;
+}
+.hero-inner { max-width: 800px; margin: 0 auto; }
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 16px; border-radius: 999px;
+  background: rgba(0,245,255,.08); border: 1px solid rgba(0,245,255,.25);
+  font-size: .8rem; color: var(--cyan); font-weight: 600;
+  margin-bottom: 32px; letter-spacing: .06em;
+}
+.hero-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cyan);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+.hero-hex {
+  font-size: clamp(3rem, 10vw, 5.5rem);
+  color: var(--cyan);
+  line-height: 1;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 24px rgba(0,245,255,.5));
+  animation: hexSpin 6s ease-in-out infinite alternate;
+}
+@keyframes hexSpin { to { filter: drop-shadow(0 0 40px rgba(124,58,237,.7)); color: var(--purple2); } }
+
+h1 {
+  font-size: clamp(2.4rem, 7vw, 4.2rem);
+  font-weight: 800; letter-spacing: -.02em;
+  line-height: 1.1;
+  margin-bottom: 20px;
+}
+h1 .accent { color: var(--cyan); }
+
+.hero-sub {
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: var(--muted);
+  max-width: 560px; margin: 0 auto 40px;
+}
+
+.hero-pills {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  justify-content: center; margin-bottom: 48px;
+}
+.pill {
+  padding: 6px 14px; border-radius: 8px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  font-size: .8rem; color: var(--muted); font-family: monospace;
+}
+
+.hero-ctas {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  justify-content: center;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 28px; border-radius: 10px;
+  font-size: 1rem; font-weight: 700;
+  text-decoration: none; transition: all .22s; cursor: pointer;
+  border: none; outline: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--cyan), var(--purple2));
+  color: #000;
+  box-shadow: 0 0 32px rgba(0,245,255,.25);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 48px rgba(0,245,255,.4); }
+.btn-outline {
+  background: var(--glass); border: 1px solid var(--border); color: var(--text);
+}
+.btn-outline:hover { border-color: var(--cyan); color: var(--cyan); transform: translateY(-2px); }
+
+.hero-scroll {
+  margin-top: 80px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--muted); font-size: .8rem;
+}
+.hero-scroll-line {
+  width: 1px; height: 48px;
+  background: linear-gradient(to bottom, var(--cyan), transparent);
+  animation: scrollLine 2s ease-in-out infinite;
+}
+@keyframes scrollLine { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+/* ── App Preview / mockup ─────────────────────────────────────── */
+#preview { padding: 0 24px 96px; }
+.mockup-wrap {
+  max-width: 960px; margin: 0 auto;
+}
+.mockup-bar {
+  background: rgba(0,245,255,.06);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  padding: 12px 18px;
+  display: flex; align-items: center; gap: 10px;
+}
+.mockup-dots { display: flex; gap: 6px; }
+.mockup-dots span {
+  width: 12px; height: 12px; border-radius: 50%;
+}
+.d1 { background: #ff5f57; }
+.d2 { background: #febc2e; }
+.d3 { background: #28c840; }
+.mockup-title {
+  flex: 1; text-align: center;
+  font-size: .8rem; color: var(--muted); font-family: monospace;
+}
+.mockup-body {
+  background: rgba(5,5,15,.8);
+  border: 1px solid var(--border);
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+.mockup-screen {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  height: 480px;
+  font-family: monospace; font-size: .78rem;
+}
+.mock-sidebar {
+  background: rgba(0,245,255,.03);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.mock-logo {
+  padding: 0 16px 20px;
+  font-size: 1rem; font-weight: 700; color: var(--cyan);
+  letter-spacing: .04em;
+}
+.mock-nav-item {
+  padding: 9px 16px; display: flex; align-items: center; gap: 10px;
+  color: var(--muted); cursor: pointer; transition: all .15s;
+  border-left: 2px solid transparent;
+}
+.mock-nav-item.active {
+  color: var(--cyan);
+  background: rgba(0,245,255,.06);
+  border-left-color: var(--cyan);
+}
+.mock-main { padding: 20px; overflow: hidden; }
+.mock-search {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--muted);
+  margin-bottom: 20px; font-family: monospace; font-size: .8rem;
+}
+.mock-section-title {
+  color: var(--muted); font-size: .7rem; letter-spacing: .1em;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.mock-cards { display: flex; gap: 12px; margin-bottom: 20px; }
+.mock-card {
+  flex: 1; min-width: 0;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(0,245,255,.12);
+  border-radius: 10px; padding: 14px;
+}
+.mock-card-name { color: var(--text); font-weight: 700; margin-bottom: 4px; font-size: .85rem; }
+.mock-card-badge {
+  display: inline-block; font-size: .65rem; padding: 2px 6px;
+  border-radius: 4px; margin-bottom: 8px;
+}
+.badge-verified { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+.badge-aur { background: rgba(249,115,22,.15); color: var(--orange); border: 1px solid rgba(249,115,22,.3); }
+.mock-stars { color: #fbbf24; font-size: .75rem; margin-bottom: 10px; }
+.mock-btn {
+  width: 100%; padding: 5px; border-radius: 6px; font-size: .72rem;
+  background: rgba(0,245,255,.1); border: 1px solid rgba(0,245,255,.25);
+  color: var(--cyan); cursor: pointer; font-family: monospace;
+}
+.mock-btn:hover { background: rgba(0,245,255,.18); }
+.mock-installed-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: 8px;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  margin-bottom: 8px;
+}
+.mock-installed-name { color: var(--text); font-size: .82rem; }
+.mock-installed-ver { color: var(--muted); font-size: .72rem; }
+
+/* ── Features ────────────────────────────────────────────────── */
+#features { text-align: center; }
+
+.section-label {
+  font-size: .75rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--cyan); margin-bottom: 12px; font-weight: 600;
+}
+h2 {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 800; letter-spacing: -.02em; margin-bottom: 16px;
+}
+h2 .accent { color: var(--cyan); }
+.section-sub { color: var(--muted); max-width: 540px; margin: 0 auto 64px; font-size: 1.05rem; }
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+.feature-card {
+  padding: 28px; border-radius: 14px; text-align: left;
+  transition: transform .2s, border-color .2s;
+}
+.feature-card:hover { transform: translateY(-4px); border-color: rgba(0,245,255,.35); }
+.feature-icon {
+  font-size: 2rem; margin-bottom: 16px;
+  display: inline-block;
+}
+.feature-card h3 { font-size: 1.05rem; margin-bottom: 8px; }
+.feature-card p { color: var(--muted); font-size: .9rem; line-height: 1.65; }
+
+/* ── Security ────────────────────────────────────────────────── */
+#security { text-align: center; }
+.security-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px; margin-top: 48px;
+}
+.sec-item {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 18px 20px; border-radius: 12px; text-align: left;
+}
+.sec-icon {
+  font-size: 1.3rem; flex-shrink: 0;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  background: rgba(0,245,255,.07);
+  border: 1px solid rgba(0,245,255,.15);
+}
+.sec-item h4 { font-size: .9rem; margin-bottom: 4px; }
+.sec-item p { color: var(--muted); font-size: .8rem; line-height: 1.5; }
+
+/* ── Tech Stack ──────────────────────────────────────────────── */
+#stack { text-align: center; }
+.stack-grid {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  justify-content: center; margin-top: 48px;
+}
+.stack-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px; border-radius: 12px;
+  transition: all .2s;
+}
+.stack-item:hover { border-color: rgba(0,245,255,.35); transform: translateY(-2px); }
+.stack-item-icon { font-size: 1.5rem; }
+.stack-item-name { font-weight: 700; font-size: .95rem; }
+.stack-item-desc { color: var(--muted); font-size: .78rem; }
+
+/* ── Download cards ──────────────────────────────────────────── */
+#download { text-align: center; }
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px; margin-top: 48px;
+}
+.dl-card {
+  padding: 32px 28px; border-radius: 16px; text-align: left;
+  transition: transform .2s, border-color .2s;
+  position: relative; overflow: hidden;
+}
+.dl-card::before {
+  content: ''; position: absolute;
+  inset: 0; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(0,245,255,.06), transparent 60%);
+  pointer-events: none;
+}
+.dl-card:hover { transform: translateY(-5px); border-color: rgba(0,245,255,.4); }
+.dl-card-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 12px; margin-bottom: 14px;
+}
+.dl-icon {
+  width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem;
+}
+.dl-icon-app    { background: rgba(0,245,255,.1);   border: 1px solid rgba(0,245,255,.25); }
+.dl-icon-install{ background: rgba(124,58,237,.1);  border: 1px solid rgba(124,58,237,.3); }
+.dl-type {
+  font-size: .68rem; font-weight: 700; letter-spacing: .1em;
+  padding: 4px 10px; border-radius: 999px;
+}
+.dl-type-direct { background: rgba(0,245,255,.12); color: var(--cyan);    border: 1px solid rgba(0,245,255,.3); }
+.dl-type-install{ background: rgba(124,58,237,.12); color: var(--purple2); border: 1px solid rgba(124,58,237,.3); }
+.dl-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 6px; }
+.dl-card p   { color: var(--muted); font-size: .87rem; line-height: 1.6; margin-bottom: 20px; }
+.dl-meta {
+  display: flex; gap: 14px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.dl-meta-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .78rem; color: var(--muted);
+}
+.dl-meta-item strong { color: var(--text); }
+.btn-dl {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 14px 20px; border-radius: 10px;
+  font-size: .95rem; font-weight: 700;
+  text-decoration: none; transition: all .22s; cursor: pointer; border: none;
+}
+.btn-dl-primary {
+  background: linear-gradient(135deg, var(--cyan), #0080ff);
+  color: #000;
+  box-shadow: 0 0 24px rgba(0,245,255,.2);
+}
+.btn-dl-primary:hover { box-shadow: 0 0 40px rgba(0,245,255,.4); transform: translateY(-2px); }
+.btn-dl-secondary {
+  background: linear-gradient(135deg, var(--purple), var(--purple2));
+  color: #fff;
+  box-shadow: 0 0 24px rgba(124,58,237,.2);
+}
+.btn-dl-secondary:hover { box-shadow: 0 0 40px rgba(124,58,237,.4); transform: translateY(-2px); }
+.dl-note {
+  margin-top: 10px; text-align: center;
+  font-size: .75rem; color: var(--muted);
+}
+.dl-note a { color: var(--cyan); text-decoration: none; }
+.dl-note a:hover { text-decoration: underline; }
+.dl-sha {
+  margin-top: 14px; padding: 10px 14px; border-radius: 8px;
+  background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.07);
+  font-family: monospace; font-size: .72rem; color: var(--muted);
+  word-break: break-all; line-height: 1.5;
+}
+.dl-sha strong { color: var(--cyan); }
+
+/* ── Install ─────────────────────────────────────────────────── */
+#install { text-align: center; }
+.install-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px; margin-top: 48px;
+}
+.install-card { padding: 32px; border-radius: 14px; text-align: left; }
+.install-card .tag {
+  display: inline-block; font-size: .7rem; padding: 3px 10px;
+  border-radius: 999px; margin-bottom: 16px; font-weight: 700;
+  letter-spacing: .06em;
+}
+.tag-recommended { background: rgba(0,245,255,.12); color: var(--cyan); border: 1px solid rgba(0,245,255,.3); }
+.tag-diy { background: rgba(124,58,237,.12); color: var(--purple2); border: 1px solid rgba(124,58,237,.3); }
+.install-card h3 { font-size: 1.15rem; margin-bottom: 10px; }
+.install-card p { color: var(--muted); font-size: .88rem; margin-bottom: 20px; line-height: 1.6; }
+
+.code-block {
+  background: rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: 16px 18px;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: .8rem;
+  overflow-x: auto;
+  position: relative;
+}
+.code-block .comment { color: rgba(220,232,255,.3); }
+.code-block .cmd { color: var(--cyan); }
+.code-block .arg { color: var(--purple2); }
+.code-block .str { color: #86efac; }
+.copy-btn {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  color: var(--muted); font-size: .7rem; padding: 4px 10px;
+  border-radius: 6px; cursor: pointer; font-family: monospace;
+  transition: all .2s;
+}
+.copy-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+
+/* ── Stats ───────────────────────────────────────────────────── */
+#stats { padding: 48px 24px; }
+.stats-row {
+  max-width: 800px; margin: 0 auto;
+  display: flex; flex-wrap: wrap; gap: 0; justify-content: center;
+}
+.stat-item {
+  flex: 1; min-width: 160px;
+  text-align: center; padding: 32px 20px;
+  border-right: 1px solid var(--border);
+}
+.stat-item:last-child { border-right: none; }
+.stat-value {
+  font-size: 2.4rem; font-weight: 800;
+  background: linear-gradient(135deg, var(--cyan), var(--purple2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-label { color: var(--muted); font-size: .85rem; margin-top: 6px; }
+
+/* ── CTA ─────────────────────────────────────────────────────── */
+#cta { text-align: center; padding: 96px 24px; }
+.cta-card {
+  max-width: 680px; margin: 0 auto;
+  padding: 56px 40px; border-radius: 20px;
+  border: 1px solid rgba(0,245,255,.2);
+  background: linear-gradient(135deg, rgba(0,245,255,.05), rgba(124,58,237,.05));
+  position: relative; overflow: hidden;
+}
+.cta-card::before {
+  content: '⬡';
+  position: absolute; font-size: 18rem; color: rgba(0,245,255,.02);
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.cta-card h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin-bottom: 16px; }
+.cta-card p { color: var(--muted); margin-bottom: 36px; font-size: 1rem; }
+.cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+/* ── Footer ──────────────────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 24px;
+  text-align: center;
+}
+.footer-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: 16px;
+}
+.footer-logo { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.footer-logo-hex { color: var(--cyan); }
+.footer-links { display: flex; gap: 20px; }
+.footer-links a { color: var(--muted); text-decoration: none; font-size: .85rem; transition: color .2s; }
+.footer-links a:hover { color: var(--cyan); }
+.footer-copy { color: var(--muted); font-size: .8rem; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .nav-links a:not(.btn-gh) { display: none; }
+  .mockup-screen { grid-template-columns: 1fr; }
+  .mock-sidebar { display: none; }
+  .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+  .stat-item:last-child { border-bottom: none; }
+  .footer-inner { flex-direction: column; text-align: center; }
+  section { padding: 72px 20px; }
+}
+
+/* ── Scroll reveal ───────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity .55s ease, transform .55s ease;
+}
+.reveal.visible { opacity: 1; transform: none; }
+.reveal-delay-1 { transition-delay: .1s; }
+.reveal-delay-2 { transition-delay: .2s; }
+.reveal-delay-3 { transition-delay: .3s; }
+</style>
+</head>
+
+<body>
+
+<!-- ── Background ── -->
+<div class="bg-wrap" aria-hidden="true">
+  <div class="bg-grid"></div>
+  <div class="glow glow-cyan"></div>
+  <div class="glow glow-purple"></div>
+</div>
+
+<!-- ── Nav ── -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <span class="nav-logo-hex">⬡</span>
+      Arch<span class="acc">Store</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#security">Security</a>
+      <a href="#download">Download</a>
+      <a href="#install">Self-Host</a>
+      <a href="https://github.com/MiniSharkCraft/ArchStore" target="_blank" class="btn-gh">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="content">
+
+<!-- ── Hero ── -->
+<section id="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Open Source · Arch Linux · v1.0.0
+    </div>
+
+    <div class="hero-hex">⬡</div>
+
+    <h1>The <span class="accent">Arch Linux</span><br/>App Store</h1>
+
+    <p class="hero-sub">
+      Discover, install, and review packages with the community.
+      pacman + AUR + Trustpilot-style ratings — in one cyberpunk desktop app.
+    </p>
+
+    <div class="hero-pills">
+      <span class="pill">Go + Wails v2</span>
+      <span class="pill">React 18</span>
+      <span class="pill">Cloudflare Workers</span>
+      <span class="pill">Argon2id</span>
+      <span class="pill">AppImage</span>
+    </div>
+
+    <div class="hero-ctas">
+      <a href="https://github.com/MiniSharkCraft/ArchStore/releases/download/v1.0.0/ArchStore-1.0.0-x86_64.AppImage"
+         class="btn btn-primary" download>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download v1.0.0 · 4.4 MB
+      </a>
+      <a href="#download" class="btn btn-outline">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
+        All Downloads
+      </a>
+      <a href="https://github.com/MiniSharkCraft/ArchStore" target="_blank" class="btn btn-outline">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        GitHub
+      </a>
+    </div>
+
+    <div class="hero-scroll">
+      <div class="hero-scroll-line"></div>
+      <span>scroll to explore</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── App Preview ── -->
+<section id="preview">
+  <div class="mockup-wrap reveal">
+    <div class="mockup-bar">
+      <div class="mockup-dots">
+        <span class="d1"></span><span class="d2"></span><span class="d3"></span>
+      </div>
+      <div class="mockup-title">ArchStore — Arch Linux App Store</div>
+    </div>
+    <div class="mockup-body">
+      <div class="mockup-screen">
+        <div class="mock-sidebar">
+          <div class="mock-logo">⬡ Arch<span style="color:var(--cyan)">Store</span></div>
+          <div class="mock-nav-item active">🏠 &nbsp;Home</div>
+          <div class="mock-nav-item">🔍 &nbsp;Search</div>
+          <div class="mock-nav-item">📦 &nbsp;Installed</div>
+          <div class="mock-nav-item">🔄 &nbsp;Updates</div>
+          <div class="mock-nav-item">⚙️ &nbsp;Settings</div>
+        </div>
+        <div class="mock-main">
+          <div class="mock-search">🔍 &nbsp;Search packages — pacman &amp; AUR...</div>
+          <div class="mock-section-title">✦ Editor's Pick</div>
+          <div class="mock-cards">
+            <div class="mock-card">
+              <div class="mock-card-name">firefox</div>
+              <span class="mock-card-badge badge-verified">✓ Verified</span>
+              <div class="mock-stars">★★★★★ <span style="color:var(--muted)">4.8</span></div>
+              <button class="mock-btn">Install</button>
+            </div>
+            <div class="mock-card">
+              <div class="mock-card-name">neovim</div>
+              <span class="mock-card-badge badge-verified">✓ Verified</span>
+              <div class="mock-stars">★★★★★ <span style="color:var(--muted)">4.9</span></div>
+              <button class="mock-btn">Install</button>
+            </div>
+            <div class="mock-card">
+              <div class="mock-card-name">yay</div>
+              <span class="mock-card-badge badge-aur">AUR</span>
+              <div class="mock-stars">★★★★★ <span style="color:var(--muted)">4.7</span></div>
+              <button class="mock-btn">Install</button>
+            </div>
+          </div>
+          <div class="mock-section-title">📦 Recently Installed</div>
+          <div class="mock-installed-row">
+            <span class="mock-installed-name">kitty</span>
+            <span class="mock-installed-ver">0.35.2-1 &nbsp;✓</span>
+          </div>
+          <div class="mock-installed-row">
+            <span class="mock-installed-name">discord</span>
+            <span class="mock-installed-ver">0.0.47-1 &nbsp;✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Stats ── -->
+<section id="stats">
+  <div class="card reveal">
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-value">85+</div>
+        <div class="stat-label">Curated Apps</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">13</div>
+        <div class="stat-label">Categories</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">3</div>
+        <div class="stat-label">Languages</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">0ms</div>
+        <div class="stat-label">API Cold Start</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section id="features">
+  <div class="container">
+    <p class="section-label reveal">Features</p>
+    <h2 class="reveal">Everything you need,<br/><span class="accent">nothing you don't.</span></h2>
+    <p class="section-sub reveal">Built for Arch users who care about both power and aesthetics.</p>
+
+    <div class="features-grid">
+      <div class="card feature-card reveal">
+        <div class="feature-icon">📦</div>
+        <h3>pacman + AUR, unified</h3>
+        <p>Search both pacman repos and AUR simultaneously. Results are deduplicated, with pacman taking priority. One-click install and uninstall with real-time progress events.</p>
+      </div>
+      <div class="card feature-card reveal reveal-delay-1">
+        <div class="feature-icon">⭐</div>
+        <h3>Trustpilot-style reviews</h3>
+        <p>Rate apps 1–5 stars, leave comments, like useful reviews. Anti-fake protection: JWT auth, one review per user per package, rate limiting, and no self-voting.</p>
+      </div>
+      <div class="card feature-card reveal reveal-delay-2">
+        <div class="feature-icon">🔐</div>
+        <h3>Full auth system</h3>
+        <p>Local accounts with Argon2id hashing. Discord and GitHub OAuth. JWT + rotating refresh tokens. Account lockout after 5 failed attempts. Password reset via email OTP.</p>
+      </div>
+      <div class="card feature-card reveal">
+        <div class="feature-icon">📸</div>
+        <h3>Snapshot before install</h3>
+        <p>Automatically creates a Timeshift or Snapper snapshot before every install and uninstall. Broke your system? Roll back in seconds.</p>
+      </div>
+      <div class="card feature-card reveal reveal-delay-1">
+        <div class="feature-icon">🏷️</div>
+        <h3>Source badges</h3>
+        <p>Official pacman packages get a green <b>✓ Verified</b> badge. AUR packages are clearly marked. Low-rated apps (below 3.5★) are filtered from homepage recommendations.</p>
+      </div>
+      <div class="card feature-card reveal reveal-delay-2">
+        <div class="feature-icon">🌏</div>
+        <h3>Multilingual</h3>
+        <p>Switch between English, Tiếng Việt, and 日本語 without restarting the app. Preference is saved in localStorage. Adding a new language takes one JSON file.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Security ── -->
+<section id="security">
+  <div class="container">
+    <p class="section-label reveal">Security</p>
+    <h2 class="reveal">Built secure <span class="accent">by default.</span></h2>
+    <p class="section-sub reveal">12 layers of protection — from the desktop app to the Cloudflare edge.</p>
+
+    <div class="security-grid">
+      <div class="card sec-item reveal">
+        <div class="sec-icon">🔑</div>
+        <div>
+          <h4>X-Api-Key header</h4>
+          <p>Every request carries a shared secret. Requests without it return 401. Timing-safe HMAC comparison — no timing attacks.</p>
+        </div>
+      </div>
+      <div class="card sec-item reveal reveal-delay-1">
+        <div class="sec-icon">🧂</div>
+        <div>
+          <h4>Argon2id passwords</h4>
+          <p>t=2, m=512KB, p=1 — adapted for Cloudflare Workers 10ms CPU limit. Constant-time verification.</p>
+        </div>
+      </div>
+      <div class="card sec-item reveal reveal-delay-2">
+        <div class="sec-icon">🔄</div>
+        <div>
+          <h4>Refresh token rotation</h4>
+          <p>Only SHA-256 hash stored in D1. Raw token never persists server-side. Revoked on password reset.</p>
+        </div>
+      </div>
+      <div class="card sec-item reveal">
+        <div class="sec-icon">🚫</div>
+        <div>
+          <h4>Shell injection prevention</h4>
+          <p>Package names validated against <code>[a-zA-Z0-9\-_.+@]</code> whitelist on both Go and Worker side.</p>
+        </div>
+      </div>
+      <div class="card sec-item reveal reveal-delay-1">
+        <div class="sec-icon">⏱️</div>
+        <div>
+          <h4>Rate limiting</h4>
+          <p>5 reviews per user per 24h. D1-backed, per-endpoint. Returns 429 with Retry-After header.</p>
+        </div>
+      </div>
+      <div class="card sec-item reveal reveal-delay-2">
+        <div class="sec-icon">🔒</div>
+        <div>
+          <h4>pkexec GUI auth</h4>
+          <p>System changes use pkexec for a GUI authentication dialog. No terminal password exposure.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Tech Stack ── -->
+<section id="stack">
+  <div class="container">
+    <p class="section-label reveal">Tech Stack</p>
+    <h2 class="reveal">Modern tools, <span class="accent">zero compromise.</span></h2>
+
+    <div class="stack-grid">
+      <div class="card stack-item reveal">
+        <div class="stack-item-icon">🐹</div>
+        <div>
+          <div class="stack-item-name">Go 1.23</div>
+          <div class="stack-item-desc">Backend + system calls</div>
+        </div>
+      </div>
+      <div class="card stack-item reveal reveal-delay-1">
+        <div class="stack-item-icon">⚡</div>
+        <div>
+          <div class="stack-item-name">Wails v2</div>
+          <div class="stack-item-desc">Go ↔ React bridge</div>
+        </div>
+      </div>
+      <div class="card stack-item reveal reveal-delay-2">
+        <div class="stack-item-icon">⚛️</div>
+        <div>
+          <div class="stack-item-name">React 18</div>
+          <div class="stack-item-desc">UI + TypeScript</div>
+        </div>
+      </div>
+      <div class="card stack-item reveal">
+        <div class="stack-item-icon">☁️</div>
+        <div>
+          <div class="stack-item-name">Cloudflare Workers</div>
+          <div class="stack-item-desc">Edge API + Hono</div>
+        </div>
+      </div>
+      <div class="card stack-item reveal reveal-delay-1">
+        <div class="stack-item-icon">🗄️</div>
+        <div>
+          <div class="stack-item-name">Cloudflare D1</div>
+          <div class="stack-item-desc">SQLite at the edge</div>
+        </div>
+      </div>
+      <div class="card stack-item reveal reveal-delay-2">
+        <div class="stack-item-icon">📦</div>
+        <div>
+          <div class="stack-item-name">AppImage</div>
+          <div class="stack-item-desc">Single-file Linux dist</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Download ── -->
+<section id="download">
+  <div class="container">
+    <p class="section-label reveal">Download</p>
+    <h2 class="reveal">Choose your <span class="accent">flavor.</span></h2>
+    <p class="section-sub reveal">Both are self-contained AppImages — no installation, no dependencies, just download and run on any Arch Linux system.</p>
+
+    <div class="download-grid">
+
+      <!-- AppImage Direct -->
+      <div class="card dl-card reveal">
+        <div class="dl-card-header">
+          <div class="dl-icon dl-icon-app">🚀</div>
+          <span class="dl-type dl-type-direct">DIRECT RUN</span>
+        </div>
+        <h3>ArchStore AppImage</h3>
+        <p>The app itself — 4.4 MB. No installer needed. Download, <code style="color:var(--cyan)">chmod +x</code>, and run. Configure via environment variables.</p>
+        <div class="dl-meta">
+          <div class="dl-meta-item">📦 <strong>4.4 MB</strong></div>
+          <div class="dl-meta-item">🐧 <strong>x86_64</strong></div>
+          <div class="dl-meta-item">📋 <strong>v1.0.0</strong></div>
+        </div>
+        <a href="https://github.com/MiniSharkCraft/ArchStore/releases/download/v1.0.0/ArchStore-1.0.0-x86_64.AppImage"
+           class="btn-dl btn-dl-primary" download>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download AppImage
+        </a>
+        <div class="dl-note">
+          After download: <code style="color:var(--cyan)">chmod +x ArchStore-1.0.0-x86_64.AppImage && ./ArchStore-1.0.0-x86_64.AppImage</code>
+        </div>
+      </div>
+
+      <!-- Installer -->
+      <div class="card dl-card reveal reveal-delay-1">
+        <div class="dl-card-header">
+          <div class="dl-icon dl-icon-install">🧙</div>
+          <span class="dl-type dl-type-install">INSTALLER</span>
+        </div>
+        <h3>ArchStore Installer</h3>
+        <p>5-step GUI installer — automatically copies the app, creates a desktop shortcut, and sets up your environment variables. Recommended for first-time users.</p>
+        <div class="dl-meta">
+          <div class="dl-meta-item">📦 <strong>104 MB</strong></div>
+          <div class="dl-meta-item">🐧 <strong>x86_64</strong></div>
+          <div class="dl-meta-item">⚡ <strong>Electron</strong></div>
+        </div>
+        <a href="https://github.com/MiniSharkCraft/ArchStore/releases/download/v1.0.0/ArchStore-Installer-1.0.0-x86_64.AppImage"
+           class="btn-dl btn-dl-secondary" download>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download Installer
+        </a>
+        <div class="dl-note">
+          After download: <code style="color:var(--purple2)">chmod +x ArchStore-Installer-1.0.0-x86_64.AppImage && ./ArchStore-Installer-1.0.0-x86_64.AppImage</code>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Verify note -->
+    <div class="reveal" style="margin-top:28px; text-align:center; color:var(--muted); font-size:.85rem;">
+      🔒 Verify the download integrity on the
+      <a href="https://github.com/MiniSharkCraft/ArchStore/releases/tag/v1.0.0" target="_blank"
+         style="color:var(--cyan); text-decoration:none;">releases page</a>.
+      Source code licensed under
+      <a href="https://github.com/MiniSharkCraft/ArchStore/blob/main/LICENSE" target="_blank"
+         style="color:var(--cyan); text-decoration:none;">LGPL-3.0</a>.
+    </div>
+  </div>
+</section>
+
+<!-- ── Install ── -->
+<section id="install">
+  <div class="container">
+    <p class="section-label reveal">Get Started</p>
+    <h2 class="reveal">Up and running <span class="accent">in 60 seconds.</span></h2>
+    <p class="section-sub reveal">Two paths: grab the AppImage and go, or deploy your own backend.</p>
+
+    <div class="install-options">
+      <div class="card install-card reveal">
+        <span class="tag tag-recommended">★ RECOMMENDED</span>
+        <h3>Run the AppImage</h3>
+        <p>Single executable, no installation required. Set your Worker URL and API key, then run.</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <div><span class="comment"># Download from GitHub Releases</span></div>
+          <div><span class="cmd">chmod</span> <span class="arg">+x</span> ArchStore-*.AppImage</div>
+          <br/>
+          <div><span class="cmd">export</span> ARCHSTORE_CF_WORKER_URL=<span class="str">"https://..."</span></div>
+          <div><span class="cmd">export</span> ARCHSTORE_API_KEY=<span class="str">"your-key"</span></div>
+          <br/>
+          <div><span class="cmd">./ArchStore-*.AppImage</span></div>
+        </div>
+      </div>
+
+      <div class="card install-card reveal reveal-delay-1">
+        <span class="tag tag-diy">SELF-HOST</span>
+        <h3>Deploy your own backend</h3>
+        <p>Fork the repo, deploy your own Cloudflare Worker, and build the app pointing to it.</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <div><span class="comment"># 1. Deploy Cloudflare Worker</span></div>
+          <div><span class="cmd">cd</span> cloudflare/worker</div>
+          <div><span class="cmd">cp</span> wrangler.toml.example wrangler.toml</div>
+          <div><span class="cmd">wrangler</span> d1 create archstore-db</div>
+          <div><span class="cmd">wrangler</span> deploy</div>
+          <br/>
+          <div><span class="comment"># 2. Build the desktop app</span></div>
+          <div><span class="cmd">wails</span> dev</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section id="cta">
+  <div class="cta-card reveal">
+    <h2>Ready to try <span class="accent">ArchStore</span>?</h2>
+    <p>Open source, community-driven, and built with love for the Arch Linux ecosystem.</p>
+    <div class="cta-btns">
+      <a href="https://github.com/MiniSharkCraft/ArchStore/releases/download/v1.0.0/ArchStore-1.0.0-x86_64.AppImage"
+         class="btn btn-primary" download>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        AppImage · 4.4 MB
+      </a>
+      <a href="https://github.com/MiniSharkCraft/ArchStore/releases/download/v1.0.0/ArchStore-Installer-1.0.0-x86_64.AppImage"
+         class="btn btn-outline" download>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Installer · 104 MB
+      </a>
+      <a href="https://github.com/MiniSharkCraft/ArchStore" target="_blank" class="btn btn-outline">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        Star on GitHub
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">
+      <span class="footer-logo-hex">⬡</span>
+      Arch<span style="color:var(--cyan)">Store</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/MiniSharkCraft/ArchStore" target="_blank">GitHub</a>
+      <a href="https://github.com/MiniSharkCraft/ArchStore/releases" target="_blank">Releases</a>
+      <a href="https://github.com/MiniSharkCraft/ArchStore/blob/main/LICENSE" target="_blank">LGPL-3.0</a>
+      <a href="https://github.com/MiniSharkCraft/ArchStore/issues" target="_blank">Issues</a>
+    </div>
+    <div class="footer-copy">Built with 💜 for the Arch Linux community</div>
+  </div>
+</footer>
+
+</div><!-- .content -->
+
+<script>
+// ── Scroll reveal ──────────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Copy code ──────────────────────────────────────────────────
+function copyCode(btn) {
+  const block = btn.closest('.code-block');
+  const text = [...block.querySelectorAll('div')]
+    .map(d => d.innerText).join('\n').replace(/copy/g, '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+// ── Mockup card hover ──────────────────────────────────────────
+document.querySelectorAll('.mock-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const orig = this.textContent;
+    this.textContent = 'Installing...';
+    this.style.color = 'var(--purple2)';
+    setTimeout(() => {
+      this.textContent = '✓ Installed';
+      this.style.color = 'var(--green)';
+    }, 800);
+    setTimeout(() => {
+      this.textContent = orig;
+      this.style.color = '';
+    }, 2400);
+  });
+});
+
+// ── Smooth nav links ───────────────────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) {
+      e.preventDefault();
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+
+</body>
+</html>
